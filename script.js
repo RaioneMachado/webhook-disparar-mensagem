@@ -4,52 +4,64 @@ import axios from "axios";
 const app = express();
 app.use(express.json());
 
-// Endpoint do webhook (a Kiwify vai chamar isso quando uma compra for aprovada)
+// 🔗 Configurações da UltraMsg
+const INSTANCE_ID = "instance149170";
+const TOKEN = "lztlxn4dhrkzw19j";
+
+// 🧩 Endpoint que a Kiwify vai chamar quando uma compra for aprovada
 app.post("/webhook", async (req, res) => {
   const data = req.body;
+  console.log("📩 Webhook recebido:", data);
 
-  console.log("Webhook recebido:", data);
-
+  // Verifica se o pagamento foi aprovado e o cliente tem celular
   if (data?.order_status === "paid" && data?.Customer?.mobile) {
-    const phone = data.Customer.mobile.replace(/\D/g, ""); // limpa o número
+    const phone = data.Customer.mobile.replace(/\D/g, ""); // remove tudo que não é número
     const firstName = data.Customer.first_name || "músico";
 
-    // Mensagem personalizada
+    // 📝 Mensagem personalizada enviada ao cliente
     const message = `🎉 Parabéns, ${firstName} 😃
 Seu pagamento já foi aprovado ✅
 
 Você já vai receber seu acesso ao *Partituras Piano* com os links abaixo:
 
-🎹 BONUS PARTITURAS FACILITADAS PIANO-TECLADO
+🎹 BONUS PARTITURAS FACILITADAS PIANO-TECLADO  
 https://drive.google.com/drive/folders/1Hk3k32sAew91iVdKt_IdHdqJXhCgBGOz
 
-🎼 BONUS +1000 PARTITURAS TECLADO-PIANO
+🎼 BONUS +1000 PARTITURAS TECLADO-PIANO  
 https://drive.google.com/drive/folders/1xwoabQpdaueUuScxoTyk_LcLNYxqcN95
 
-🎵 10000+ PARTITURAS PIANO-TECLADO
+🎵 10000+ PARTITURAS PIANO-TECLADO  
 https://drive.google.com/drive/folders/16PIjcnkOwwAakX6DtRy2Vvk9n7whjnfm
 
-🎧 PLAYBACKS MÚSICAS PIANO-TECLADO
+🎧 PLAYBACKS MÚSICAS PIANO-TECLADO  
 https://drive.google.com/drive/folders/1jmbEgtSOLuv-0wD8RC7AmfpjWpU0mnrI
 
 Obrigado pela preferência, conte com a gente! 🎶`;
 
     try {
+      // Envia a mensagem pela UltraMsg
       const response = await axios.post(
-        "https://api.z-api.io/instances/3E9DA031E52651F11A9BCEE0FE05F6ED/token/83567A2EACC8EBC3DFE25CAD/send-text",
+        `https://api.ultramsg.com/${INSTANCE_ID}/messages/chat?token=${TOKEN}`,
         {
-          phone: phone,
-          message: message,
+          to: phone,
+          body: message,
         }
       );
-      console.log("Mensagem enviada para", phone, response.data);
+
+      console.log(`✅ Mensagem enviada com sucesso para ${phone}`);
+      console.log("📤 Resposta da API:", response.data);
     } catch (error) {
       console.error("❌ Erro ao enviar mensagem:", error.message);
+      if (error.response) {
+        console.error("Detalhes:", error.response.data);
+      }
     }
+  } else {
+    console.log("⚠️ Webhook recebido, mas não é um pagamento aprovado ou faltam dados do cliente.");
   }
 
   res.sendStatus(200);
 });
 
-// Porta para rodar localmente (ignorada na Vercel)
+// 🚀 Porta local (ignorada na Vercel)
 app.listen(3000, () => console.log("🚀 Webhook rodando na porta 3000"));
